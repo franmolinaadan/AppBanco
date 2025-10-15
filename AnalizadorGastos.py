@@ -240,23 +240,24 @@ class AnalizadorGastos:
         self.csv_path = self.configs['usuario']['ruta_csv']
         self.df = self.cargar_datos()
 
+        # ---- INICIO DEL ARREGLO: Mover este bloque HACIA ARRIBA ----
+        # Cargar configuraciones específicas ANTES de usarlas
+        self.metas = self.configs['metas']['metas_mensuales']
+        self.alertas_config = self.configs['alertas']
+        self.preferencias = self.configs['usuario']['preferencias']
+        self.analisis_config = self.configs['analisis']
+        # ---- FIN DEL ARREGLO ----
+
+        # Ahora este bloque funcionará porque self.preferencias ya existe
         if self.df is not None and not self.df.empty:
-            # Ordenamos por fecha para asegurarnos de que la última fila es la más reciente
             ultimo_registro = self.df.sort_values(by=['año', 'mes']).iloc[-1]
             self.mes_actual = int(ultimo_registro['mes'])
             self.año_actual = int(ultimo_registro['año'])
             print(
                 f"ℹ️  Análisis enfocado en el último mes con datos: {self.nombre_mes(self.mes_actual)} {self.año_actual}")
         else:
-            # Si no hay datos, usamos la fecha actual como respaldo
             self.mes_actual = datetime.now().month
             self.año_actual = datetime.now().year
-
-        # Cargar configuraciones específicas
-        self.metas = self.configs['metas']['metas_mensuales']
-        self.alertas_config = self.configs['alertas']
-        self.preferencias = self.configs['usuario']['preferencias']
-        self.analisis_config = self.configs['analisis']  # NUEVO
 
         self.alertas_activas = []
 
