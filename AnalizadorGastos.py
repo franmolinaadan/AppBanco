@@ -312,23 +312,19 @@ class AnalizadorGastos:
         if self.df is None: return None
 
         mes_actual_df = self.df[
-            (self.df['año'] == self.año_actual) &
-            (self.df['mes'] == self.mes_actual)
+            (self.df['año'] == self.ultimo_año) &
+            (self.df['mes'] == self.ultimo_mes)
             ]
 
         total_ingresos = mes_actual_df[mes_actual_df['tipo'] == 'INGRESO']['importe'].sum()
         total_gastos = mes_actual_df[mes_actual_df['tipo'] == 'GASTO']['importe'].sum()
         balance = total_ingresos - total_gastos
 
+        # MEJORA: Obtener el saldo de forma segura ordenando por fecha e índice original
         if not mes_actual_df.empty:
-            # ANTES:
-            # saldo_actual = mes_actual_df.sort_values(by='fecha_operacion').iloc[-1]['saldo']
-            # AHORA:
             saldo_actual = mes_actual_df.sort_values(by=['fecha_operacion', 'index']).iloc[-1]['saldo']
         else:
-            # ANTES:
-            # saldo_actual = self.df.sort_values(by='fecha_operacion').iloc[-1]['saldo'] if not self.df.empty else 0
-            # AHORA:
+            # Si el último mes no tiene datos (improbable), busca el último saldo detodo el historial
             saldo_actual = self.df.sort_values(by=['fecha_operacion', 'index']).iloc[-1][
                 'saldo'] if not self.df.empty else 0
 
