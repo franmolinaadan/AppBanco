@@ -717,7 +717,7 @@ class AnalizadorGastos:
             # Importe siempre negativo para gastos
             importe_str = f"-{gasto['importe']:>7.2f}€"
 
-            subcat = gasto['subcategoria'][:13] + '..' if len(gasto['subcategoria']) > 15 else gasto['subcategoria']
+            subcat = str(gasto['subcategoria'])[:13] + '..' if len(str(gasto['subcategoria'])) > 15 else str(gasto['subcategoria'])
 
             print(f"{gasto['fecha_operacion']:10} {descripcion:40} {empresa:25} {importe_str:>10} {subcat:15}")
             total_gastos += gasto['importe']  # CAMBIO: Eliminar abs() porque 'importe' es positivo
@@ -1240,14 +1240,29 @@ class AnalizadorGastos:
 
         # Excluir gastos fijos y especiales por palabra clave o importe
         gastos_a_buscar = config['gastos_fijos_mensuales'] + config['gastos_especiales_anuales']
+        gastos_a_buscar = config['gastos_fijos_mensuales'] + config['gastos_especiales_anuales']
         for gasto_recurrente in gastos_a_buscar:
-            mask = (
-                    (gastos_mes_df['nombre_empresa'].str.contains(gasto_recurrente['palabra_clave'], case=False,
-                                                                  na=False)) |
-                    (gastos_mes_df['concepto'].str.contains(gasto_recurrente['palabra_clave'], case=False, na=False)) |
-                    (gastos_mes_df['importe'] == gasto_recurrente['importe_exacto'])
-            )
-            gastos_excluidos += gastos_mes_df[mask]['importe'].sum()
+            # Empezamos sin ninguna coincidencia
+            mask_palabra = pd.Series([False] * len(gastos_mes_df), index=gastos_mes_df.index)
+            mask_importe = pd.Series([False] * len(gastos_mes_df), index=gastos_mes_df.index)
+
+            # Si hay palabra_clave, la buscamos
+            if 'palabra_clave' in gasto_recurrente:
+                mask_palabra = (
+                        (gastos_mes_df['nombre_empresa'].str.contains(gasto_recurrente['palabra_clave'], case=False,
+                                                                      na=False)) |
+                        (gastos_mes_df['concepto'].str.contains(gasto_recurrente['palabra_clave'], case=False,
+                                                                na=False))
+                )
+
+            # Si hay importe_exacto, lo buscamos
+            if 'importe_exacto' in gasto_recurrente:
+                mask_importe = (gastos_mes_df['importe'] == gasto_recurrente['importe_exacto'])
+
+            # La máscara final es la unión de ambas búsquedas
+            final_mask = mask_palabra | mask_importe
+            gastos_excluidos += gastos_mes_df[final_mask]['importe'].sum()
+
 
         return max(0, total_gastos - gastos_excluidos)
 

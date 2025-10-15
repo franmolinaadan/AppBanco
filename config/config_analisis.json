@@ -21,22 +21,14 @@
   "gastos_especiales_anuales": [
     {
       "nombre": "Universidad (Anual)",
-      "palabra_clave": "UNIVERSIDADMIGUELHERNAN",
-      "importe_exacto": 520.2
+      "palabra_clave": "UNIVERSIDADMIGUELHERNANELCHE ES"
     },
     {
-      "nombre": "Entradas Concierto",
-      "palabra_clave": "TICKETMASTER",
-      "importe_exacto": 514.0
-    },
-    {
-      "nombre": "Compra Grande Revolut",
-      "palabra_clave": "REVOLUT",
-      "importe_exacto": 300.0
+      "nombre": "Movimiento a Revolut",
+      "palabra_clave": "REVOLUT"
     }
   ],
   "operaciones_a_excluir_de_variables": [
-    "BIZUM",
     "TRANSFERENCIA"
   ],
   "umbral_compra_grande": 150.0,
