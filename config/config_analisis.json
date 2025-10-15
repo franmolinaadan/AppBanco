@@ -35,7 +35,11 @@
     "CAFETERÍA",
     "TABACO",
     "FAST FOOD",
-    "DELIVERY"
+    "DELIVERY",
+    "APARCAMIENTO",
+    "SUPERMERCADO",
+    "RESTAURANTE",
+    "VARIOS"
   ],
   "umbral_compra_grande": 150.0,
   "categorias_a_ignorar_en_compras_grandes": [
