@@ -1,33 +1,10 @@
 {
   "version": "1.0",
-  "fecha_actualizacion": "2025-10-08T00:06:41.950783",
+  "fecha_actualizacion": "...",
   "metas_mensuales": {
-    "ahorro_mensual": 100.0,
-    "limite_comidas_fuera": 70.0,
-    "limite_ocio": 50.0,
-    "limite_compras_online": 20.0,
-    "limite_transporte": 20.0,
-    "limite_suscripciones": 20.0
-  },
-  "metas_anuales": {
-    "ahorro_anual": 2400,
-    "inversion_objetivo": 1000,
-    "fondo_emergencia": 3000
-  },
-  "categorias_personalizadas": {
-    "esenciales": [
-      "Alimentacion",
-      "Transporte",
-      "Servicios"
-    ],
-    "discrecionales": [
-      "Ocio",
-      "Compras",
-      "Restaurantes"
-    ],
-    "ahorro_inversion": [
-      "Ahorro",
-      "Inversion"
-    ]
+    "limite_COMIDA": 150,
+    "limite_OCIO": 100,
+    "limite_COMPRAS": 200,
+    "limite_TRANSPORTE": 50
   }
 }

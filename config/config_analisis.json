@@ -31,6 +31,12 @@
   "operaciones_a_excluir_de_variables": [
     "TRANSFERENCIA"
   ],
+  "subcategorias_gastos_hormiga": [
+    "CAFETERÍA",
+    "TABACO",
+    "FAST FOOD",
+    "DELIVERY"
+  ],
   "umbral_compra_grande": 150.0,
   "categorias_a_ignorar_en_compras_grandes": [
     "ALIMENTACION",

@@ -251,13 +251,13 @@ class AnalizadorGastos:
         # Ahora este bloque funcionará porque self.preferencias ya existe
         if self.df is not None and not self.df.empty:
             ultimo_registro = self.df.sort_values(by=['año', 'mes']).iloc[-1]
-            self.mes_actual = int(ultimo_registro['mes'])
-            self.año_actual = int(ultimo_registro['año'])
+            self.ultimo_mes = int(ultimo_registro['mes'])
+            self.ultimo_año = int(ultimo_registro['año'])
             print(
-                f"ℹ️  Análisis enfocado en el último mes con datos: {self.nombre_mes(self.mes_actual)} {self.año_actual}")
+                f"ℹ️  Análisis enfocado en el último mes con datos: {self.nombre_mes(self.ultimo_mes)} {self.ultimo_año}")
         else:
-            self.mes_actual = datetime.now().month
-            self.año_actual = datetime.now().year
+            self.ultimo_mes = datetime.now().month
+            self.ultimo_año = datetime.now().year
 
         self.alertas_activas = []
 
@@ -345,16 +345,54 @@ class AnalizadorGastos:
         resumen = self.obtener_resumen_ultimo_mes()
         if resumen is None: return
 
+        print("\n" + "=" * 70)
+        print(f"💰 RESUMEN DEL ÚLTIMO MES - {self.nombre_mes(self.ultimo_mes).upper()} {self.ultimo_año}")
         print("=" * 70)
-        print(f"💰 RESUMEN DEL ÚLTIMO MES - {self.nombre_mes(self.mes_actual).upper()} {self.año_actual}")
-        print("=" * 70)
-        # CONSISTENCIA: f-strings
-        print(f"📊 Transacciones este mes: {resumen['transacciones']:>5}")
         print(f"💵 Total ingresos:        {resumen['ingresos']:>10.2f}€")
         print(f"💸 Total gastos:          {resumen['gastos']:>10.2f}€")
         print(f"⚖️  Balance:               {resumen['balance']:>10.2f}€")
-        print(f"🏦 Saldo actual:          {resumen['saldo_actual']:>10.2f}€")
+        print(f"🏦 Saldo final del mes:   {resumen['saldo_actual']:>10.2f}€")
         print("=" * 70)
+
+        self.mostrar_seguimiento_metas()
+
+    def mostrar_seguimiento_metas(self):
+        """
+        NUEVA FUNCIÓN: Muestra el progreso visual de las metas de gasto para el último mes.
+        """
+        # Filtrar los datos para obtener solo los del último mes analizado
+        df_mes = self.df[(self.df['año'] == self.ultimo_año) & (self.df['mes'] == self.ultimo_mes)]
+        gastos_mes = df_mes[df_mes['tipo'] == 'GASTO']
+
+        print(f"\n🎯 SEGUIMIENTO DE METAS - {self.nombre_mes(self.ultimo_mes).upper()} {self.ultimo_año}")
+        print("-" * 70)
+
+        if not self.metas:
+            print("  No hay metas definidas en config_metas.json")
+            return
+
+        for meta, limite in self.metas.items():
+            # Asegurarse de que solo procesamos las metas de límite de gasto
+            if meta.startswith("limite_"):
+                # Extraer el nombre de la categoría del nombre de la meta
+                categoria = meta.replace("limite_", "").upper()
+
+                # Calcular el gasto actual para esa categoría en el mes
+                gasto_actual = gastos_mes[gastos_mes['categoria'].str.upper() == categoria]['importe'].sum()
+
+                # Calcular el porcentaje y la barra de progreso
+                porcentaje = (gasto_actual / limite) * 100 if limite > 0 else 0
+                # Asegurarse de que la barra no exceda los 10 caracteres
+                bloques_llenos = min(10, int(porcentaje / 10))
+                barra = "█" * bloques_llenos + "-" * (10 - bloques_llenos)
+
+                # Añadir un emoji de estado visual
+                emoji = "⚠️" if porcentaje > 100 else "✅" if porcentaje <= 80 else "🤔"
+
+                print(
+                    f"  - {categoria.capitalize():15} [{barra}] {gasto_actual:.2f}€ / {limite:.2f}€ ({porcentaje:.0f}%) {emoji}")
+
+        print("-" * 70)
 
     def mostrar_menu_principal(self):
         """Muestra el menú principal"""
@@ -1037,7 +1075,9 @@ class AnalizadorGastos:
             print("0. ↩️  Volver al menú anterior")
             print("1. 📊 Estadísticas por mes")
             print("2. 📈 Análisis financiero detallado")
-
+            print("3. 🔄 Comparativa de gastos por categoría")
+            print("4. 🐜 Análisis de 'Gastos Hormiga'")
+            print("5. 📜 Informe de suscripciones y gastos fijos")
             try:
                 opcion = int(input("\n👉 Selecciona una opción: "))
 
@@ -1047,11 +1087,21 @@ class AnalizadorGastos:
                     self.estadisticas_por_mes()
                 elif opcion == 2:
                     self.analisis_financiero_detallado()
+                elif opcion == 3:
+                    self.comparativa_gastos_categoria()
+                    input("\n⏎ Presiona Enter para continuar...")
+                elif opcion == 4:
+                    self.analisis_gastos_hormiga()
+                elif opcion == 5:
+                    self.informe_gastos_fijos()
                 else:
                     print("❌ Opción no válida")
+                if opcion != 0:
+                    input("\n⏎ Presiona Enter para continuar...")
 
             except ValueError:
                 print("❌ Por favor, introduce un número válido")
+                input("\n⏎ Presiona Enter para continuar...")
 
     def estadisticas_por_mes(self):
         """Estadísticas detalladas por mes"""
@@ -1193,6 +1243,145 @@ class AnalizadorGastos:
         for categoria, gasto in gastos_por_categoria.head(5).items():
             porcentaje = (gasto / total_gastos) * 100 if total_gastos > 0 else 0
             print(f"  {categoria:20} {gasto:>8.2f}€ ({porcentaje:5.1f}%)")
+
+    def comparativa_gastos_categoria(self):
+        """
+        NUEVA FUNCIÓN: Muestra una comparativa de gastos para una categoría seleccionada a lo largo del tiempo.
+        """
+        print("\n📈 COMPARATIVA DE GASTOS POR CATEGORÍA")
+
+        # Obtener y mostrar la lista de categorías de gasto disponibles
+        gastos_df = self.df[self.df['tipo'] == 'GASTO']
+        if gastos_df.empty:
+            print("❌ No hay datos de gastos para analizar.")
+            return
+
+        categorias_gastos = sorted(gastos_df['categoria'].unique())
+
+        print("0. ↩️  Volver al menú anterior")
+        for i, cat in enumerate(categorias_gastos, 1):
+            print(f"{i}. {cat}")
+
+        try:
+            opcion = int(input("\n👉 Selecciona una categoría para comparar: "))
+
+            if opcion == 0:
+                return
+            elif 1 <= opcion <= len(categorias_gastos):
+                cat_seleccionada = categorias_gastos[opcion - 1]
+
+                # Filtrar los datos para la categoría seleccionada y agrupar por mes
+                filtro_df = self.df[
+                    (self.df['tipo'] == 'GASTO') &
+                    (self.df['categoria'] == cat_seleccionada)
+                    ]
+                gastos_mensuales = filtro_df.groupby(['año', 'mes'])['importe'].sum().sort_index()
+
+                print(f"\n📈 COMPARATIVA - {cat_seleccionada.upper()}")
+                print("-" * 45)
+
+                gasto_anterior = None
+                for (año, mes), gasto_actual in gastos_mensuales.items():
+                    linea = f"- {self.nombre_mes(mes)} {año}: {gasto_actual:>8.2f}€"
+
+                    # Calcular y añadir el cambio porcentual si no es el primer mes
+                    if gasto_anterior is not None and gasto_anterior > 0:
+                        cambio = ((gasto_actual - gasto_anterior) / gasto_anterior) * 100
+                        linea += f" ({cambio:+.1f}%)"  # El '+' muestra el signo siempre
+
+                    print(linea)
+                    gasto_anterior = gasto_actual
+
+                print("-" * 45)
+            else:
+                print("❌ Opción no válida.")
+
+        except (ValueError, IndexError):
+            print("❌ Opción no válida.")
+
+    def analisis_gastos_hormiga(self):
+        """
+        NUEVA FUNCIÓN: Analiza y muestra un resumen de los gastos pequeños y frecuentes.
+        """
+        print("\n🐜 ANÁLISIS DE 'GASTOS HORMIGA'")
+
+        # Cargar la lista de subcategorías a analizar desde la configuración
+        subcategorias_hormiga = self.analisis_config.get('subcategorias_gastos_hormiga', [])
+
+        if not subcategorias_hormiga:
+            print("❌ No hay subcategorías definidas para 'gastos hormiga' en config_analisis.json")
+            return
+
+        print(f"Buscando gastos en: {', '.join(subcategorias_hormiga)}")
+        print("-" * 50)
+
+        # Filtrar el DataFrame para obtener solo las transacciones de esas subcategorías
+        filtro_df = self.df[self.df['subcategoria'].isin(subcategorias_hormiga)]
+
+        if filtro_df.empty:
+            print("✅ ¡Felicidades! No se encontraron 'gastos hormiga' en el periodo analizado.")
+            return
+
+        # Agrupar por mes y subcategoría, y calcular la suma y el número de transacciones
+        gastos_agrupados = filtro_df.groupby(['año', 'mes', 'subcategoria'])['importe'].agg(
+            ['sum', 'count']).sort_index()
+
+        # Iterar sobre los resultados para mostrarlos de forma ordenada
+        for (año, mes), grupo in gastos_agrupados.groupby(level=[0, 1]):
+            print(f"\n--- {self.nombre_mes(mes)} {año} ---")
+            total_mes = 0
+            # droplevel() es para poder iterar solo por la subcategoría dentro de cada grupo de mes/año
+            for (subcat), datos in grupo.droplevel([0, 1]).iterrows():
+                print(f"  - {subcat:15} {datos['sum']:>7.2f}€ ({int(datos['count'])} trans.)")
+                total_mes += datos['sum']
+            print(f"  {'TOTAL MES:':17} {total_mes:>7.2f}€")
+
+        print("-" * 50)
+
+    def informe_gastos_fijos(self):
+        """
+        NUEVA FUNCIÓN: Muestra un informe de los gastos fijos definidos en la configuración
+        y su estado en el último mes (pagado o pendiente).
+        """
+        print("\n📜 INFORME DE SUSCRIPCIONES Y GASTOS FIJOS")
+        print("-" * 70)
+
+        # Cargar la lista de gastos fijos desde la configuración
+        gastos_fijos_config = self.analisis_config.get('gastos_fijos_mensuales', [])
+
+        if not gastos_fijos_config:
+            print("❌ No hay gastos fijos definidos en config_analisis.json")
+            return
+
+        # Filtrar datos para el último mes
+        df_mes = self.df[(self.df['año'] == self.ultimo_año) & (self.df['mes'] == self.ultimo_mes)]
+
+        total_fijos_pagados = 0
+        print(f"Estado para {self.nombre_mes(self.ultimo_mes)} {self.ultimo_año}:")
+
+        for fijo in gastos_fijos_config:
+            palabra_clave = fijo['palabra_clave']
+
+            # Buscar la transacción que coincida con la palabra clave
+            mask = (df_mes['nombre_empresa'].str.contains(palabra_clave, case=False, na=False)) | \
+                   (df_mes['concepto'].str.contains(palabra_clave, case=False, na=False))
+
+            transaccion_encontrada = df_mes[mask]
+
+            if not transaccion_encontrada.empty:
+                # Si se encuentra, se marca como pagado y se toma el importe real
+                importe = transaccion_encontrada['importe'].iloc[0]
+                estado = "✅ Pagado"
+                total_fijos_pagados += importe
+            else:
+                # Si no se encuentra, se marca como pendiente y se usa el importe de la config si existe
+                importe = fijo.get('importe_exacto', 0.0)
+                estado = "⏳ Pendiente" if importe > 0 else "ℹ️  No detectado este mes"
+
+            print(f"- {fijo['nombre']:25} | Importe: {importe:>6.2f}€ | Estado: {estado}")
+
+        print("-" * 70)
+        print(f"Total de gastos fijos pagados en el mes: {total_fijos_pagados:.2f}€")
 
     def estimar_ingresos_mensuales(self):
         """Estima los ingresos mensuales basado en historial - ACTUALIZADO"""
