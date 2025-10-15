@@ -1,3 +1,5 @@
+import json
+import os
 import re
 import pandas as pd
 import pdfplumber
@@ -6,106 +8,20 @@ from pathlib import Path
 # Cargar diccionario
 _palabras_espanol = None
 
-# Mapeo de empresas a categorías y subcategorías
-MApeo_CATEGORIAS = {
-    # BIZUM
-    'BIZUM': ('BIZUM', ''),
+def cargar_mapeo_categorias():
+    """Carga las reglas de categorización desde el archivo JSON."""
+    ruta_config = os.path.join('..', 'config', 'config_categorias.json')
+    try:
+        with open(ruta_config, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        # Convertir la lista de reglas a un diccionario para una búsqueda más rápida
+        mapeo = {regla['palabra_clave']: (regla['categoria'], regla['subcategoria']) for regla in config['mapeo_categorias']}
+        return mapeo
+    except Exception as e:
+        print(f"❌ Error cargando la configuración de categorías: {e}")
+        return {}
 
-    # TRANSFERENCIAS
-    'TRANSFERENCIA': ('TRANSFERENCIAS', ''),
-    'NOMINA': ('TRANSFERENCIAS', 'NÓMINA'),
-    'DELINEM': ('TRANSFERENCIAS', 'DESEMPLEO'),
-    'PAYPAL': ('TRANSFERENCIAS', 'TRANSFERENCIA'),
-    'REVOLUT': ('TRANSFERENCIAS', 'TRANSFERENCIA'),
-
-    # RESTAURANTES
-    'RESTAURANTES': ('COMIDA', 'RESTAURANTE'),
-    'CAFETERIAS': ('COMIDA', 'CAFETERÍA'),
-    'GLOVO': ('COMIDA', 'DELIVERY'),
-    'MCDONALD': ('COMIDA', 'FAST FOOD'),
-    'BURGUER': ('COMIDA', 'RESTAURANTE'),
-    'PIZZA': ('COMIDA', 'RESTAURANTE'),
-    'SHOGUN': ('COMIDA', 'RESTAURANTE'),
-    'SAONA': ('COMIDA', 'RESTAURANTE'),
-    'TAPERIA': ('COMIDA', 'RESTAURANTE'),
-    'VERMUTERIA': ('COMIDA', 'RESTAURANTE'),
-
-    # SUPERMERCADOS
-    'CONSUM': ('COMIDA', 'SUPERMERCADO'),
-    'HIPERBER': ('COMIDA', 'SUPERMERCADO'),
-    'MERCADONA': ('COMIDA', 'SUPERMERCADO'),
-    'SUPERMERCADO': ('COMIDA', 'SUPERMERCADO'),
-    'ALIMENTACION': ('COMIDA', 'SUPERMERCADO'),
-
-    # ENTRETENIMIENTO
-    'SPOTIFY': ('ENTRETENIMIENTO', 'MÚSICA'),
-    'DISTROKID': ('ENTRETENIMIENTO', 'MÚSICA'),
-    'NETFLIX': ('ENTRETENIMIENTO', 'STREAMING'),
-    'TEATRO': ('ENTRETENIMIENTO', 'CULTURA'),
-    'CINE': ('ENTRETENIMIENTO', 'CINE'),
-    'DEPORTES': ('ENTRETENIMIENTO', 'DEPORTE'),
-    'MUSEOS': ('ENTRETENIMIENTO', 'CULTURA'),
-    'ESPECTACULOS': ('ENTRETENIMIENTO', 'CULTURA'),
-
-    # TRANSPORTE
-    'AUTOMOVIL': ('TRANSPORTE', 'GASOLINA'),
-    'GASOLINA': ('TRANSPORTE', 'GASOLINA'),
-    'PARKING': ('TRANSPORTE', 'APARCAMIENTO'),
-    'ORAELCHE': ('TRANSPORTE', 'APARCAMIENTO'),
-    'UBER': ('TRANSPORTE', 'TAXI'),
-    'TAXI': ('TRANSPORTE', 'TAXI'),
-    'MAPFRE': ('TRANSPORTE', 'SEGURO'),
-    'TRANSPORTE': ('TRANSPORTE', ''),
-
-    # SALUD Y DEPORTE
-    'FITNESS': ('SALUD', 'GIMNASIO'),
-    'GYM': ('SALUD', 'GIMNASIO'),
-    'DEPORTE': ('SALUD', 'DEPORTE'),
-    'DEPORTESUMH': ('SALUD', 'DEPORTE'),
-    'IPADEL': ('SALUD', 'DEPORTE'),
-    'FITZ': ('SALUD', 'GIMNASIO'),
-
-    # COMPRAS
-    'ZARA': ('COMPRAS', 'ROPA'),
-    'PRIMARK': ('COMPRAS', 'ROPA'),
-    'MODA': ('COMPRAS', 'ROPA'),
-    'CALZADO': ('COMPRAS', 'ZAPATOS'),
-    'COMPLEMENTOS': ('COMPRAS', 'ACCESORIOS'),
-    'AMAZON': ('COMPRAS', 'ONLINE'),
-    'LEROYMERLIN': ('COMPRAS', 'HOGAR'),
-    'HOGAR': ('COMPRAS', 'HOGAR'),
-    'MUEBLES': ('COMPRAS', 'HOGAR'),
-    'LIMENCOP ELCHE ES': ('COMPRAS', 'PAPELERIA'),
-    'PAPELERIA ELCHE-ELX ES': ('COMPRAS', 'PAPELERIA'),
-    'COPICARRUS ELCHE/ELX ES': ('COMPRAS', 'PAPELERIA'),
-    'DECORACION': ('COMPRAS', 'HOGAR'),
-
-    # COMPRAS ONLINE
-    'XSOLLA': ('COMPRAS', 'ONLINE'),
-    'APPLE.COM': ('COMPRAS', 'ONLINE'),
-    'STEAM': ('COMPRAS', 'ONLINE'),
-    'ENEBA': ('COMPRAS', 'ONLINE'),
-    'SIMYO': ('COMPRAS', 'ONLINE'),
-
-    # SERVICIOS
-    'TELEFONIA': ('SERVICIOS', 'COMUNICACIONES'),
-    'MOVIL': ('SERVICIOS', 'COMUNICACIONES'),
-    'MOVILTIK': ('SERVICIOS', 'COMUNICACIONES'),
-    'INTERNET': ('SERVICIOS', 'COMUNICACIONES'),
-    'AGUA': ('SERVICIOS', 'HOGAR'),
-    'LUZ': ('SERVICIOS', 'HOGAR'),
-    'GAS': ('SERVICIOS', 'HOGAR'),
-
-    # TECNOLOGÍA
-    'APPLE': ('TECNOLOGÍA', 'SOFTWARE'),
-    'GOOGLE': ('TECNOLOGÍA', 'SOFTWARE'),
-
-    # VARIOS
-    'TABACO': ('VARIOS', 'TABACO'),
-    'ESTANCO': ('VARIOS', 'TABACO'),
-    'EXPENDEDURIAN14 ELCHE ES': ('VARIOS', 'TABACO'),
-    'COMISION': ('COMISIONES', 'BANCARIAS'),
-}
+Mapeo_CATEGORIAS = cargar_mapeo_categorias()
 
 
 def determinar_categoria(operacion, nombre_empresa):
@@ -124,13 +40,13 @@ def determinar_categoria(operacion, nombre_empresa):
     # Buscar en el nombre de la empresa
     nombre_empresa_upper = nombre_empresa.upper()
 
-    for palabra, (categoria, subcategoria) in MApeo_CATEGORIAS.items():
+    for palabra, (categoria, subcategoria) in Mapeo_CATEGORIAS.items():
         if palabra in nombre_empresa_upper:
             return categoria, subcategoria
 
     # Buscar en la operación
     operacion_upper = operacion.upper()
-    for palabra, (categoria, subcategoria) in MApeo_CATEGORIAS.items():
+    for palabra, (categoria, subcategoria) in Mapeo_CATEGORIAS.items():
         if palabra in operacion_upper:
             return categoria, subcategoria
 

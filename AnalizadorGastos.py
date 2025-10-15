@@ -366,12 +366,14 @@ class AnalizadorGastos:
         return [(row['año'], row['mes']) for _, row in meses.iterrows()]
 
     def nombre_mes(self, numero_mes):
-        """Devuelve el nombre del mes"""
-        meses = {
-            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio',
-            7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-        }
-        return meses.get(numero_mes, f'Mes {numero_mes}')
+        """Devuelve el nombre del mes desde la configuración."""
+        try:
+            idioma = self.preferencias.get('idioma', 'es')
+            meses = self.configs['usuario']['locale'][idioma]['meses']
+            return meses.get(str(numero_mes), f'Mes {numero_mes}')
+        except KeyError:
+            # Si falla, usa un metodo de respaldo para no detener el programa
+            return datetime(1900, numero_mes, 1).strftime('%B').capitalize()
 
     def mostrar_submenu_meses(self, titulo):
         """Muestra submenú para seleccionar mes"""
