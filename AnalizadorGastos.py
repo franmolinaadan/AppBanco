@@ -240,8 +240,17 @@ class AnalizadorGastos:
         self.csv_path = self.configs['usuario']['ruta_csv']
         self.df = self.cargar_datos()
 
-        self.mes_actual = datetime.now().month
-        self.año_actual = datetime.now().year
+        if self.df is not None and not self.df.empty:
+            # Ordenamos por fecha para asegurarnos de que la última fila es la más reciente
+            ultimo_registro = self.df.sort_values(by=['año', 'mes']).iloc[-1]
+            self.mes_actual = int(ultimo_registro['mes'])
+            self.año_actual = int(ultimo_registro['año'])
+            print(
+                f"ℹ️  Análisis enfocado en el último mes con datos: {self.nombre_mes(self.mes_actual)} {self.año_actual}")
+        else:
+            # Si no hay datos, usamos la fecha actual como respaldo
+            self.mes_actual = datetime.now().month
+            self.año_actual = datetime.now().year
 
         # Cargar configuraciones específicas
         self.metas = self.configs['metas']['metas_mensuales']
@@ -297,7 +306,7 @@ class AnalizadorGastos:
             print(f"❌ Error cargando CSV: {e}")
             return None
 
-    def obtener_resumen_mes_actual(self):
+    def obtener_resumen_ultimo_mes(self):
         """Calcula el resumen financiero del mes actual."""
         if self.df is None: return None
 
@@ -332,11 +341,11 @@ class AnalizadorGastos:
 
     def mostrar_cabecera(self):
         """Muestra la cabecera con el resumen del mes actual"""
-        resumen = self.obtener_resumen_mes_actual()
+        resumen = self.obtener_resumen_ultimo_mes()
         if resumen is None: return
 
         print("=" * 70)
-        print(f"💰 RESUMEN FINANCIERO - {self.nombre_mes(self.mes_actual).upper()} {self.año_actual}")
+        print(f"💰 RESUMEN DEL ÚLTIMO MES - {self.nombre_mes(self.mes_actual).upper()} {self.año_actual}")
         print("=" * 70)
         # CONSISTENCIA: f-strings
         print(f"📊 Transacciones este mes: {resumen['transacciones']:>5}")
@@ -1027,7 +1036,6 @@ class AnalizadorGastos:
             print("0. ↩️  Volver al menú anterior")
             print("1. 📊 Estadísticas por mes")
             print("2. 📈 Análisis financiero detallado")
-            print("3. 🔄 Gastos recurrentes y proyecciones")
 
             try:
                 opcion = int(input("\n👉 Selecciona una opción: "))
@@ -1038,8 +1046,6 @@ class AnalizadorGastos:
                     self.estadisticas_por_mes()
                 elif opcion == 2:
                     self.analisis_financiero_detallado()
-                elif opcion == 3:
-                    self.gastos_recurrentes_proyecciones()
                 else:
                     print("❌ Opción no válida")
 
@@ -1186,178 +1192,6 @@ class AnalizadorGastos:
         for categoria, gasto in gastos_por_categoria.head(5).items():
             porcentaje = (gasto / total_gastos) * 100 if total_gastos > 0 else 0
             print(f"  {categoria:20} {gasto:>8.2f}€ ({porcentaje:5.1f}%)")
-
-    def gastos_recurrentes_proyecciones(self):
-        """
-        Orquesta el análisis de gastos recurrentes y proyecciones.
-        Función principal que llama a las funciones auxiliares.
-        """
-        print("\n🔄 GASTOS RECURRENTES Y PROYECCIONES")
-        print("=" * 70)
-
-        meses_completos = self._get_past_completed_months()
-        if not meses_completos:
-            print("❌ No hay suficientes datos de meses anteriores para realizar un análisis.")
-            return
-
-        print(f"📊 Analizando {len(meses_completos)} meses completos para identificar patrones...")
-
-        # 1. Analizar patrones de gasto de meses pasados
-        patrones = self._analyze_spending_patterns(meses_completos)
-
-        # 2. Proyectar gastos para el mes actual
-        proyeccion = self._project_current_month_expenses(patrones['promedio_gastos_variables'])
-
-        # 3. Mostrar el informe completo
-        self._display_analysis_report(patrones, proyeccion)
-
-        input("\n⏎ Presiona Enter para continuar...")
-
-    def _get_past_completed_months(self):
-        """Obtiene una lista de tuplas (año, mes) de meses pasados y completos."""
-        df_meses = self.df[['año', 'mes']].drop_duplicates()
-        meses_completos = []
-        for _, row in df_meses.iterrows():
-            año, mes = int(row['año']), int(row['mes'])
-            if año < self.año_actual or (año == self.año_actual and mes < self.mes_actual):
-                meses_completos.append((año, mes))
-        return sorted(meses_completos)
-
-    def _calculate_variable_expenses_for_month(self, month_df):
-        """
-        Calcula los gastos variables para un DataFrame de un mes específico,
-        excluyendo fijos, especiales y otras operaciones definidas en config.
-        """
-        config = self.analisis_config
-        gastos_mes_df = month_df[month_df['tipo'] == 'GASTO']
-        total_gastos = gastos_mes_df['importe'].sum()
-
-        gastos_excluidos = 0
-
-        # Excluir operaciones definidas en config (p. ej., BIZUM, TRANSFERENCIA)
-        ops_a_excluir = config['operaciones_a_excluir_de_variables']
-        gastos_excluidos += gastos_mes_df[gastos_mes_df['operacion'].isin(ops_a_excluir)]['importe'].sum()
-
-        # Excluir gastos fijos y especiales por palabra clave o importe
-        gastos_a_buscar = config['gastos_fijos_mensuales'] + config['gastos_especiales_anuales']
-        gastos_a_buscar = config['gastos_fijos_mensuales'] + config['gastos_especiales_anuales']
-        for gasto_recurrente in gastos_a_buscar:
-            # Empezamos sin ninguna coincidencia
-            mask_palabra = pd.Series([False] * len(gastos_mes_df), index=gastos_mes_df.index)
-            mask_importe = pd.Series([False] * len(gastos_mes_df), index=gastos_mes_df.index)
-
-            # Si hay palabra_clave, la buscamos
-            if 'palabra_clave' in gasto_recurrente:
-                mask_palabra = (
-                        (gastos_mes_df['nombre_empresa'].str.contains(gasto_recurrente['palabra_clave'], case=False,
-                                                                      na=False)) |
-                        (gastos_mes_df['concepto'].str.contains(gasto_recurrente['palabra_clave'], case=False,
-                                                                na=False))
-                )
-
-            # Si hay importe_exacto, lo buscamos
-            if 'importe_exacto' in gasto_recurrente:
-                mask_importe = (gastos_mes_df['importe'] == gasto_recurrente['importe_exacto'])
-
-            # La máscara final es la unión de ambas búsquedas
-            final_mask = mask_palabra | mask_importe
-            gastos_excluidos += gastos_mes_df[final_mask]['importe'].sum()
-
-
-        return max(0, total_gastos - gastos_excluidos)
-
-    def _analyze_spending_patterns(self, meses_completos):
-        """Analiza los meses pasados para encontrar patrones de gasto variable."""
-        gastos_variables_por_mes = []
-        for año, mes in meses_completos:
-            mes_df = self.df[(self.df['año'] == año) & (self.df['mes'] == mes)]
-            gastos_variables = self._calculate_variable_expenses_for_month(mes_df)
-            gastos_variables_por_mes.append(gastos_variables)
-            print(f"  - {self.nombre_mes(mes)} {año}: Gastos variables calculados -> {gastos_variables:.2f}€")
-
-        if not gastos_variables_por_mes:
-            return {'promedio_gastos_variables': 0, 'max_gastos_variables': 0, 'min_gastos_variables': 0}
-
-        return {
-            'promedio_gastos_variables': np.mean(gastos_variables_por_mes),
-            'max_gastos_variables': np.max(gastos_variables_por_mes),
-            'min_gastos_variables': np.min(gastos_variables_por_mes),
-        }
-
-    def _project_current_month_expenses(self, promedio_historico):
-        """Proyecta los gastos para el mes actual basándose en el gasto diario."""
-        hoy = datetime.now()
-        dias_del_mes = (datetime(hoy.year, hoy.month + 1, 1) - timedelta(days=1)).day if hoy.month < 12 else 31
-        dias_transcurridos = hoy.day
-        dias_restantes = dias_del_mes - dias_transcurridos
-
-        mes_actual_df = self.df[(self.df['año'] == self.año_actual) & (self.df['mes'] == self.mes_actual)]
-        gastos_actuales_df = mes_actual_df[mes_actual_df['tipo'] == 'GASTO']
-        gastos_totales_hasta_ahora = gastos_actuales_df['importe'].sum()
-
-        # Calcular gastos variables hasta la fecha
-        gastos_variables_hasta_ahora = self._calculate_variable_expenses_for_month(mes_actual_df)
-
-        # Lógica de proyección mejorada
-        gasto_diario_promedio = gastos_variables_hasta_ahora / dias_transcurridos if dias_transcurridos > 0 else 0
-        proyeccion_gastos_variables = gasto_diario_promedio * dias_restantes
-
-        # Identificar fijos pendientes de pago
-        gastos_fijos_pendientes = 0
-        fijos_pagados = 0
-        for fijo in self.analisis_config['gastos_fijos_mensuales']:
-            mask = (
-                    (gastos_actuales_df['nombre_empresa'].str.contains(fijo['palabra_clave'], case=False, na=False)) |
-                    (gastos_actuales_df['concepto'].str.contains(fijo['palabra_clave'], case=False, na=False)) |
-                    (gastos_actuales_df['importe'] == fijo['importe_exacto'])
-            )
-            if not gastos_actuales_df[mask].empty:
-                fijos_pagados += fijo['importe_exacto']
-            else:
-                gastos_fijos_pendientes += fijo['importe_exacto']
-
-        total_proyectado = gastos_totales_hasta_ahora + proyeccion_gastos_variables + gastos_fijos_pendientes
-
-        return {
-            "gastos_hasta_ahora": gastos_totales_hasta_ahora,
-            "fijos_pagados": fijos_pagados,
-            "fijos_pendientes": gastos_fijos_pendientes,
-            "variables_estimados_restantes": proyeccion_gastos_variables,
-            "total_proyectado": total_proyectado
-        }
-
-    def _display_analysis_report(self, patrones, proyeccion):
-        """Muestra el informe final de análisis y proyección."""
-        print("-" * 70)
-        print("📊 PATRONES DE GASTO (basado en meses anteriores)")
-        print("-" * 70)
-        print(f"   ├── Promedio gastos variables mensuales: {patrones['promedio_gastos_variables']:>8.2f}€")
-        print(f"   ├── Gasto máximo en un mes:            {patrones['max_gastos_variables']:>8.2f}€")
-        print(f"   └── Gasto mínimo en un mes:            {patrones['min_gastos_variables']:>8.2f}€")
-
-        print("\n" + "-" * 70)
-        print(f"🎯 PROYECCIÓN {self.nombre_mes(self.mes_actual).upper()} {self.año_actual}")
-        print("-" * 70)
-        print("   Situación actual:")
-        print(f"   ├── Gastos totales hasta hoy: {proyeccion['gastos_hasta_ahora']:>8.2f}€")
-        print(f"   └── Fijos ya pagados:         {proyeccion['fijos_pagados']:>8.2f}€")
-        print("\n   Proyección a fin de mes:")
-        print(f"   ├── Gastos actuales:                    {proyeccion['gastos_hasta_ahora']:>8.2f}€")
-        print(f"   ├── Fijos pendientes de pago:           {proyeccion['fijos_pendientes']:>8.2f}€")
-        print(f"   ├── Estimación de gastos variables:     {proyeccion['variables_estimados_restantes']:>8.2f}€")
-        print(f"   └── 💰 GASTO TOTAL ESTIMADO:           {proyeccion['total_proyectado']:>8.2f}€")
-
-        # Recomendación final
-        if proyeccion['total_proyectado'] > patrones['promedio_gastos_variables'] * 1.15:
-            print("\n   ⚠️  ¡Atención! La proyección de gasto está significativamente por encima de tu promedio.")
-        elif proyeccion['total_proyectado'] < patrones['promedio_gastos_variables'] * 0.85:
-            print("\n   ✅ ¡Excelente! Parece que este será un mes de bajo gasto en comparación a tu promedio.")
-        else:
-            print("\n   📊 Tu gasto proyectado está dentro de tu rango habitual.")
-
-        # --- FIN DE LA REFACTORIZACIÓN ---
-
-        input("\n⏎ Presiona Enter para continuar...")
 
     def estimar_ingresos_mensuales(self):
         """Estima los ingresos mensuales basado en historial - ACTUALIZADO"""
