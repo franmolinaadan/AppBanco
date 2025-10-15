@@ -1069,11 +1069,12 @@ class AnalizadorGastos:
         while True:
             print("\n📈 ESTADÍSTICAS GENERALES")
             print("0. ↩️  Volver al menú anterior")
-            print("1. 📊 Estadísticas por mes")
+            print("1. 📊 Estadísticas por mes (agrupado por Categoría)")  # Texto aclarado
             print("2. 📈 Análisis financiero detallado")
-            print("3. 🔄 Comparativa de gastos por categoría")
-            print("4. 🐜 Análisis de 'Gastos Hormiga'")
-            print("5. 📜 Informe de suscripciones y gastos fijos")
+            print("3. 📑 Desglose mensual por Subcategoría")
+            print("4. 🔄 Comparativa de gastos por categoría")
+            print("5. 🐜 Análisis de 'Gastos Hormiga'")
+            print("6. 📜 Informe de suscripciones y gastos fijos")
             try:
                 opcion = int(input("\n👉 Selecciona una opción: "))
 
@@ -1084,11 +1085,12 @@ class AnalizadorGastos:
                 elif opcion == 2:
                     self.analisis_financiero_detallado()
                 elif opcion == 3:
-                    self.comparativa_gastos_categoria()
-                    input("\n⏎ Presiona Enter para continuar...")
+                    self.desglose_gastos_mensual_por_subcategoria()
                 elif opcion == 4:
-                    self.analisis_gastos_hormiga()
+                    self.comparativa_gastos_categoria()
                 elif opcion == 5:
+                    self.analisis_gastos_hormiga()
+                elif opcion == 6:
                     self.informe_gastos_fijos()
                 else:
                     print("❌ Opción no válida")
@@ -1378,6 +1380,67 @@ class AnalizadorGastos:
 
         print("-" * 70)
         print(f"Total de gastos fijos pagados en el mes: {total_fijos_pagados:.2f}€")
+
+    def mostrar_desglose_mes(self, año, mes):
+        """
+        NUEVA FUNCIÓN AUXILIAR: Muestra el desglose de gastos para un mes específico.
+        """
+        print(f"\n--- Desglose de {self.nombre_mes(mes)} {año} ---")
+
+        # 1. Filtrar los datos para el mes y tipo de gasto seleccionados
+        mes_df = self.df[(self.df['año'] == año) & (self.df['mes'] == mes) & (self.df['tipo'] == 'GASTO')]
+
+        if mes_df.empty:
+            print("  No hay gastos registrados en este mes.")
+            return
+
+        # 2. Agrupar por subcategoría, calculando la suma y el número de transacciones
+        #    Rellenamos las subcategorías vacías para que no se pierdan en el análisis
+        desglose = mes_df.fillna({'subcategoria': 'Sin Subcategoría'}) \
+            .groupby('subcategoria')['importe'] \
+            .agg(['sum', 'count']) \
+            .sort_values('sum', ascending=False)
+
+        # 3. Mostrar los resultados con el formato deseado
+        for subcat, datos in desglose.iterrows():
+            print(f"  - {subcat:<20} {datos['sum']:>8.2f}€ ({int(datos['count'])} trans.)")
+
+        # 4. Mostrar el total del mes
+        total_mes = mes_df['importe'].sum()
+        print("-" * 45)
+        print(f"  {'TOTAL MES:':<22} {total_mes:>8.2f}€")
+
+    def desglose_gastos_mensual_por_subcategoria(self):
+        """
+        NUEVA FUNCIÓN PRINCIPAL: Permite al usuario seleccionar un mes para ver el desglose.
+        """
+        while True:
+            meses = self.mostrar_submenu_meses("📑 DESGLOSE DE GASTOS POR SUBCATEGORÍA")
+
+            if not meses:
+                print("❌ No hay meses con datos disponibles.")
+                break
+
+            try:
+                opcion = int(input("\n👉 Selecciona un mes para ver el desglose (o todos): "))
+
+                if opcion == 0:
+                    break
+                elif opcion == 1:  # Opción para ver todos los meses
+                    for año, mes in meses:
+                        self.mostrar_desglose_mes(año, mes)
+                        if (año, mes) != meses[-1]:  # Evitar la pausa en el último mes
+                            input("\n⏎ Presiona Enter para ver el siguiente mes...")
+                    break
+                elif 2 <= opcion <= len(meses) + 1:  # Opción para un mes específico
+                    año, mes = meses[opcion - 2]
+                    self.mostrar_desglose_mes(año, mes)
+                    break
+                else:
+                    print("❌ Opción no válida")
+
+            except ValueError:
+                print("❌ Por favor, introduce un número válido")
 
     def estimar_ingresos_mensuales(self):
         """Estima los ingresos mensuales basado en historial - ACTUALIZADO"""
