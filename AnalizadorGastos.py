@@ -276,6 +276,10 @@ class AnalizadorGastos:
             df['importe'] = pd.to_numeric(df['importe'], errors='coerce')
             df.dropna(subset=['importe'], inplace=True)  # Eliminar filas donde el importe no sea válido
 
+            # ---- NUEVA LÍNEA: Guardar el índice original para desempates ----
+            df.reset_index(inplace=True)
+            # ----------------------------------------------------------------
+
             print(f"✅ Datos cargados: {len(df)} transacciones")
             return df
 
@@ -296,11 +300,17 @@ class AnalizadorGastos:
         total_gastos = mes_actual_df[mes_actual_df['tipo'] == 'GASTO']['importe'].sum()
         balance = total_ingresos - total_gastos
 
-        # MEJORA: Obtener el saldo de forma segura ordenando por fecha
         if not mes_actual_df.empty:
-            saldo_actual = mes_actual_df.sort_values(by='fecha_operacion').iloc[-1]['saldo']
+            # ANTES:
+            # saldo_actual = mes_actual_df.sort_values(by='fecha_operacion').iloc[-1]['saldo']
+            # AHORA:
+            saldo_actual = mes_actual_df.sort_values(by=['fecha_operacion', 'index']).iloc[-1]['saldo']
         else:
-            saldo_actual = self.df.sort_values(by='fecha_operacion').iloc[-1]['saldo'] if not self.df.empty else 0
+            # ANTES:
+            # saldo_actual = self.df.sort_values(by='fecha_operacion').iloc[-1]['saldo'] if not self.df.empty else 0
+            # AHORA:
+            saldo_actual = self.df.sort_values(by=['fecha_operacion', 'index']).iloc[-1][
+                'saldo'] if not self.df.empty else 0
 
         return {
             'transacciones': len(mes_actual_df),
