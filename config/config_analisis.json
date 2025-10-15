@@ -1,0 +1,47 @@
+{
+  "version": "1.0",
+  "fecha_actualizacion": "2025-10-09T20:54:52.351970",
+  "gastos_fijos_mensuales": [
+    {
+      "nombre": "Gimnasio",
+      "palabra_clave": "FitnessPark",
+      "importe_exacto": 47.0
+    },
+    {
+      "nombre": "Suscripción Apple",
+      "palabra_clave": "APPLE.COM/BILL",
+      "importe_exacto": 0.99
+    },
+    {
+      "nombre": "Spotify Empresa",
+      "palabra_clave": "Spotify",
+      "importe_exacto": 17.99
+    }
+  ],
+  "gastos_especiales_anuales": [
+    {
+      "nombre": "Universidad (Anual)",
+      "palabra_clave": "UNIVERSIDADMIGUELHERNAN",
+      "importe_exacto": 520.2
+    },
+    {
+      "nombre": "Entradas Concierto",
+      "palabra_clave": "TICKETMASTER",
+      "importe_exacto": 514.0
+    },
+    {
+      "nombre": "Compra Grande Revolut",
+      "palabra_clave": "REVOLUT",
+      "importe_exacto": 300.0
+    }
+  ],
+  "operaciones_a_excluir_de_variables": [
+    "BIZUM",
+    "TRANSFERENCIA"
+  ],
+  "umbral_compra_grande": 150.0,
+  "categorias_a_ignorar_en_compras_grandes": [
+    "ALIMENTACION",
+    "SUPERMERCADO"
+  ]
+}

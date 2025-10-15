@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "fecha_actualizacion": "2025-10-08T00:06:41.952783",
+  "ruta_csv": "Archivos csv/operaciones.csv",
+  "preferencias": {
+    "moneda": "EUR",
+    "formato_fecha": "DD/MM/YYYY",
+    "idioma": "es",
+    "tema": "claro",
+    "mostrar_graficos": true,
+    "resumen_automatico": true
+  },
+  "categorizacion_automatica": {
+    "activada": true,
+    "reglas_personalizadas": {
+      "Spotify": {
+        "categoria": "Servicios",
+        "subcategoria": "Suscripciones"
+      },
+      "Netflix": {
+        "categoria": "Servicios",
+        "subcategoria": "Suscripciones"
+      },
+      "Amazon": {
+        "categoria": "Compras",
+        "subcategoria": "Online"
+      },
+      "Uber": {
+        "categoria": "Transporte",
+        "subcategoria": "Transporte_Publico"
+      }
+    }
+  },
+  "exportacion": {
+    "formato": "csv",
+    "ruta_exportacion": "exportaciones/",
+    "auto_backup": true,
+    "frecuencia_backup": "mensual"
+  }
+}

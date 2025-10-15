@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "fecha_actualizacion": "2025-10-08T00:06:41.951783",
+  "alertas_activadas": true,
+  "umbrales_alertas": {
+    "gasto_inesperado": 50,
+    "porcentaje_limite": 0.8,
+    "cambio_significativo": 0.2,
+    "frecuencia_alerta": "diaria"
+  },
+  "notificaciones": {
+    "email": false,
+    "consola": true,
+    "archivo_log": true
+  },
+  "alertas_personalizadas": [
+    {
+      "nombre": "Gasto grande en compras",
+      "condicion": "categoria == 'Compras' and importe < -100",
+      "activa": true,
+      "mensaje": "⚠️  Gran gasto en compras detectado: {importe}€"
+    },
+    {
+      "nombre": "Ahorro bajo",
+      "condicion": "ahorro_mensual < 100",
+      "activa": true,
+      "mensaje": "💡 Ahorro bajo este mes: {ahorro_mensual}€"
+    }
+  ]
+}
