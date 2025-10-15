@@ -260,6 +260,16 @@ class AnalizadorGastos:
         try:
             df = pd.read_csv(self.csv_path, encoding='utf-8-sig')
 
+            # ---- INICIO DEL ARREGLO: Renombrar columnas antiguas si existen ----
+            columnas_a_renombrar = {
+                'Categoria_Principal': 'categoria',
+                'Subcategoria': 'subcategoria',
+                'Año': 'año',
+                'Mes': 'mes'
+            }
+            df.rename(columns=columnas_a_renombrar, inplace=True)
+            # ---- FIN DEL ARREGLO ----
+
             # --- MEJORAS EN LIMPIEZA DE DATOS ---
             # 1. Convertir a datetime real
             df['fecha_operacion'] = pd.to_datetime(df['fecha_operacion'], format='%d/%m')
@@ -593,8 +603,7 @@ class AnalizadorGastos:
             # Importe siempre positivo para ingresos
             importe_str = f"+{ingreso['importe']:>7.2f}€"
 
-            subcat = ingreso['subcategoria'][:13] + '..' if len(ingreso['subcategoria']) > 15 else ingreso[
-                'subcategoria']
+            subcat = str(ingreso['subcategoria'])[:13] + '..' if len(str(ingreso['subcategoria'])) > 15 else str(ingreso['subcategoria'])
 
             print(f"{ingreso['fecha_operacion']:10} {descripcion:40} {empresa:25} {importe_str:>10} {subcat:15}")
             total_ingresos += ingreso['importe']  # CAMBIO: 'Importe' → 'importe'
@@ -861,7 +870,7 @@ class AnalizadorGastos:
             # Importe siempre positivo para ingresos
             importe_str = f"+{trans['importe']:>7.2f}€"
 
-            subcat = trans['subcategoria'][:13] + '..' if len(trans['subcategoria']) > 15 else trans['subcategoria']
+            subcat = str(trans['subcategoria'])[:13] + '..' if len(str(trans['subcategoria'])) > 15 else str(trans['subcategoria'])
 
             print(f"{trans['fecha_operacion']:10} {descripcion:40} {categoria:25} {importe_str:>10} {subcat:15}")
             total_ingresos += trans['importe']  # CAMBIO: 'Importe' → 'importe'
@@ -971,7 +980,7 @@ class AnalizadorGastos:
             # Importe siempre negativo para gastos (pero mostramos valor absoluto en total)
             importe_str = f"-{trans['importe']:>7.2f}€"
 
-            subcat = trans['subcategoria'][:13] + '..' if len(trans['subcategoria']) > 15 else trans['subcategoria']
+            subcat = str(trans['subcategoria'])[:13] + '..' if len(str(trans['subcategoria'])) > 15 else str(trans['subcategoria'])
 
             print(f"{trans['fecha_operacion']:10} {descripcion:40} {categoria:25} {importe_str:>10} {subcat:15}")
             total_gastos += trans['importe']  # CAMBIO: Ya no necesitamos abs() porque 'importe' es positivo
