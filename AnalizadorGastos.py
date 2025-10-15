@@ -386,6 +386,33 @@ class AnalizadorGastos:
 
         return meses
 
+    def mostrar_submenu_meses_con_totales(self, filtro_df, titulo):
+        """
+        Muestra un submenú de meses con el total del importe para cada mes.
+        Utiliza un DataFrame ya filtrado para los cálculos.
+        """
+        if filtro_df is None or filtro_df.empty:
+            print("\n❌ No hay transacciones para esta selección.")
+            return []
+
+        # Agrupar por año y mes para sumar los importes
+        totales_por_mes = filtro_df.groupby(['año', 'mes'])['importe'].sum()
+
+        # Obtener la lista de meses únicos de los datos ya filtrados
+        meses_disponibles = filtro_df[['año', 'mes']].drop_duplicates().sort_values(['año', 'mes'])
+        meses = [(row['año'], row['mes']) for _, row in meses_disponibles.iterrows()]
+
+        print(f"\n{titulo}")
+        print("0. ↩️  Volver al menú anterior")
+        print("1. 📅 Ver todos los meses")
+
+        # Muestra cada mes con su total correspondiente
+        for i, (año, mes) in enumerate(meses, 2):
+            total_mes = totales_por_mes.get((año, mes), 0)
+            print(f"{i}. {self.nombre_mes(mes)} {año} (Total: {total_mes:.2f}€)")
+
+        return meses
+
     def mostrar_transacciones_mes(self, año, mes):
         """Muestra transacciones de un mes específico - ACTUALIZADO"""
         if self.df is None:
@@ -544,14 +571,16 @@ class AnalizadorGastos:
 
     def mostrar_ingresos_categoria(self, categoria):
         """Muestra ingresos por categoría - ACTUALIZADO"""
-        # CAMBIO: Usar nombres de columnas actualizados y filtro por 'tipo'
         filtro = self.df[
-            (self.df['categoria'] == categoria) &  # CAMBIO: 'Categoria_Principal' → 'categoria'
-            (self.df['tipo'] == 'INGRESO')  # CAMBIO: 'Importe' > 0 → 'tipo' == 'INGRESO'
+            (self.df['categoria'] == categoria) &
+            (self.df['tipo'] == 'INGRESO')
             ]
 
         while True:
-            meses = self.mostrar_submenu_meses(f"💵 Ingresos - {categoria}")
+            # ANTES:
+            # meses = self.mostrar_submenu_meses(f"💵 Ingresos - {categoria}")
+            # AHORA: Usamos la nueva función con el DataFrame filtrado
+            meses = self.mostrar_submenu_meses_con_totales(filtro, f"💵 Ingresos - {categoria}")
 
             try:
                 opcion = int(input("\n👉 Selecciona una opción: "))
@@ -614,22 +643,23 @@ class AnalizadorGastos:
     def mostrar_gastos_categoria(self, categoria, subcategoria=None):
         """Muestra gastos por categoría - ACTUALIZADO"""
         if subcategoria:
-            # CAMBIO: Usar nombres de columnas actualizados y filtro por 'tipo'
             filtro = self.df[
-                (self.df['subcategoria'] == subcategoria) &  # CAMBIO: 'Subcategoria' → 'subcategoria'
-                (self.df['tipo'] == 'GASTO')  # CAMBIO: 'Importe' < 0 → 'tipo' == 'GASTO'
+                (self.df['subcategoria'] == subcategoria) &
+                (self.df['tipo'] == 'GASTO')
                 ]
             titulo = f"Gastos - {categoria} > {subcategoria}"
         else:
-            # CAMBIO: Usar nombres de columnas actualizados y filtro por 'tipo'
             filtro = self.df[
-                (self.df['categoria'] == categoria) &  # CAMBIO: 'Categoria_Principal' → 'categoria'
-                (self.df['tipo'] == 'GASTO')  # CAMBIO: 'Importe' < 0 → 'tipo' == 'GASTO'
+                (self.df['categoria'] == categoria) &
+                (self.df['tipo'] == 'GASTO')
                 ]
             titulo = f"Gastos - {categoria}"
 
         while True:
-            meses = self.mostrar_submenu_meses(f"📊 {titulo}")
+            # ANTES:
+            # meses = self.mostrar_submenu_meses(f"📊 {titulo}")
+            # AHORA: Usamos la nueva función con el DataFrame filtrado
+            meses = self.mostrar_submenu_meses_con_totales(filtro, f"📊 {titulo}")
 
             try:
                 opcion = int(input("\n👉 Selecciona una opción: "))
