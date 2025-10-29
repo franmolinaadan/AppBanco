@@ -41,6 +41,7 @@
     "RESTAURANTE",
     "VARIOS"
   ],
+  "umbral_gasto_hormiga": 20,
   "umbral_compra_grande": 150.0,
   "categorias_a_ignorar_en_compras_grandes": [
     "ALIMENTACION",

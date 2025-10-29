@@ -1299,40 +1299,87 @@ class AnalizadorGastos:
 
     def analisis_gastos_hormiga(self):
         """
-        NUEVA FUNCIÓN: Analiza y muestra un resumen de los gastos pequeños y frecuentes.
+        FUNCIÓN ACTUALIZADA: Analiza gastos hormiga filtrando por un umbral de importe
+        y permite desglosar las transacciones.
         """
         print("\n🐜 ANÁLISIS DE 'GASTOS HORMIGA'")
 
-        # Cargar la lista de subcategorías a analizar desde la configuración
         subcategorias_hormiga = self.analisis_config.get('subcategorias_gastos_hormiga', [])
+        # --- INICIO DEL CAMBIO ---
+        # 1. Leer el umbral desde la configuración, con un valor por defecto de 20
+        umbral = self.analisis_config.get('umbral_gasto_hormiga', 20)
+        # --- FIN DEL CAMBIO ---
 
         if not subcategorias_hormiga:
             print("❌ No hay subcategorías definidas para 'gastos hormiga' en config_analisis.json")
             return
 
-        print(f"Buscando gastos en: {', '.join(subcategorias_hormiga)}")
+        print(f"Buscando gastos en: {', '.join(subcategorias_hormiga)} (menores a {umbral}€)")
         print("-" * 50)
 
-        # Filtrar el DataFrame para obtener solo las transacciones de esas subcategorías
-        filtro_df = self.df[self.df['subcategoria'].isin(subcategorias_hormiga)]
+        # --- INICIO DEL CAMBIO ---
+        # 2. Añadir el filtro de importe al crear el DataFrame
+        filtro_df = self.df[
+            (self.df['subcategoria'].isin(subcategorias_hormiga)) &
+            (self.df['importe'] <= umbral)
+            ]
+        # --- FIN DEL CAMBIO ---
 
         if filtro_df.empty:
-            print("✅ ¡Felicidades! No se encontraron 'gastos hormiga' en el periodo analizado.")
+            print(f"✅ ¡Felicidades! No se encontraron 'gastos hormiga' (menores a {umbral}€) en el periodo analizado.")
             return
 
-        # Agrupar por mes y subcategoría, y calcular la suma y el número de transacciones
+        # El resto de la función sigue igual...
         gastos_agrupados = filtro_df.groupby(['año', 'mes', 'subcategoria'])['importe'].agg(
             ['sum', 'count']).sort_index()
 
-        # Iterar sobre los resultados para mostrarlos de forma ordenada
         for (año, mes), grupo in gastos_agrupados.groupby(level=[0, 1]):
             print(f"\n--- {self.nombre_mes(mes)} {año} ---")
             total_mes = 0
-            # droplevel() es para poder iterar solo por la subcategoría dentro de cada grupo de mes/año
+            subcategorias_del_mes = []
+
             for (subcat), datos in grupo.droplevel([0, 1]).iterrows():
+                subcategorias_del_mes.append(subcat)
                 print(f"  - {subcat:15} {datos['sum']:>7.2f}€ ({int(datos['count'])} trans.)")
                 total_mes += datos['sum']
             print(f"  {'TOTAL MES:':17} {total_mes:>7.2f}€")
+
+            while True:
+                print("\n  ¿Desglosar alguna subcategoría?")
+                print("  0. ↩️  Continuar al siguiente mes")
+                for i, subcat_menu in enumerate(subcategorias_del_mes, 1):
+                    print(f"  {i}. {subcat_menu}")
+
+                try:
+                    opcion = int(input("\n  👉 Selecciona una opción: "))
+                    if opcion == 0:
+                        break
+                    elif 1 <= opcion <= len(subcategorias_del_mes):
+                        subcat_seleccionada = subcategorias_del_mes[opcion - 1]
+
+                        transacciones_desglose = filtro_df[
+                            (filtro_df['año'] == año) &
+                            (filtro_df['mes'] == mes) &
+                            (filtro_df['subcategoria'] == subcat_seleccionada)
+                            ].sort_values('fecha_operacion')
+
+                        print(f"\n--- Desglose de {subcat_seleccionada} en {self.nombre_mes(mes)} {año} ---")
+                        total_desglose = 0
+                        for _, trans in transacciones_desglose.iterrows():
+                            fecha_str = trans['fecha_operacion'].strftime('%d/%m')
+                            empresa = str(trans['nombre_empresa'])[:20] + '..' if len(
+                                str(trans['nombre_empresa'])) > 22 else str(trans['nombre_empresa'])
+                            print(f"    - {fecha_str} | {empresa:<22} | -{trans['importe']:>6.2f}€")
+                            total_desglose += trans['importe']
+
+                        print("    " + "-" * 38)
+                        print(f"    {'TOTAL:':>32} -{total_desglose:>6.2f}€")
+
+                        input("\n    ⏎ Presiona Enter para continuar...")
+                    else:
+                        print("    ❌ Opción no válida.")
+                except ValueError:
+                    print("    ❌ Por favor, introduce un número.")
 
         print("-" * 50)
 
